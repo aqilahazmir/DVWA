@@ -2,30 +2,56 @@ name: Security Scan
 
 on:
   push:
+    branches: [ master ]
   pull_request:
-  schedule:
-    - cron: '0 0 * * 0' # Weekly run
+    branches: [ master ]
 
 jobs:
   dependency-scan:
+    name: Dependency Scanning
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
+      - name: Dependency Review (GitHub built-in)
+        uses: actions/dependency-review-action@v3
 
-      - name: Install dependencies
+      - name: Python Dependency Audit
+        uses: pypa/gh-action-pip-audit@v1.0.8
+
+      - name: Node.js Audit
         run: |
-          export SETUPTOOLS_USE_DISTUTILS=stdlib
-          pip3 install safety pytest
+          if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+            npm install
+            npm audit --audit-level=high
+          else
+            echo "No Node.js dependencies found."
+          fi
 
-      - name: Run Safety (Python dependency scanning)
-        run: safety check --full-report || true
+  docker-scan:
+    name: Docker Image Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Run tests (skip broken URL checks)
-        run: pytest -s -k "not test_url" || true
+      - name: Install Trivy
+        uses: aquasecurity/trivy-action@0.11.0
+        with:
+          scan-type: fs
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run Gitleaks
+        uses: zricethezav/gitleaks-action@v2
+        with:
+          config-path: .gitleaks.toml
+          fail: true
