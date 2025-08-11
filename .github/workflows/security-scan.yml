@@ -1,0 +1,33 @@
+name: Security Scan
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  dependency-scan:
+    name: Run Dependency Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Setup Node.js (if the project has JS dependencies)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # Optional: Install dependencies (customize for PHP/Java/etc.)
+      - name: Install dependencies
+        run: |
+          if [ -f package.json ]; then npm install; fi
+
+      # GitHub built-in dependency review
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v3
